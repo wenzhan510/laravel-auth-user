@@ -1,6 +1,6 @@
 # Laravel optimization tutorial: Cache User Model in Auth
 
-# [中文教程：在Auth中用Cache调度缓存的User模型](#中文教程【laravel性能优化教程】在Auth中用Cache调度缓存的User模型)
+# [中文教程-在Auth中用Cache调度缓存的User模型](#中文教程-在Auth中用Cache调度缓存的User模型)
 
 ## Abstract
 
@@ -375,7 +375,7 @@ That's it. We are still exploring cache user usage in passport API setting.
 
 
 
-# 中文教程【laravel性能优化教程】在Auth中用Cache调度缓存的User模型
+# 中文教程-在Auth中用Cache调度缓存的User模型
 
 ## 源代码地址
 [https://github.com/lyn510/laravel-auth-user](https://github.com/lyn510/laravel-auth-user)
