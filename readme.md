@@ -1,6 +1,6 @@
 # Laravel optimization tutorial: Cache User Model in Auth
 
-# [中文教程-在Auth中用Cache调度缓存的User模型](#中文教程-在Auth中用Cache调度缓存的User模型)
+# [中文教程在Auth中用Cache调度缓存的User模型](#中文教程-在Auth中用Cache调度缓存的User模型)
 
 ## Abstract
 
