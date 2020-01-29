@@ -26,11 +26,11 @@ In our production environment, this method really helps.
 
 ## Introduction
 
-Cache user to improve performance is not a new idea. However, when I dig for tutorial for Laravel auth, it is rare to find one. One of the most helpful tutorial is by Pauland (https://paulund.co.uk/laravel-cache-authuser), which is very helpful but missed a key part: it did not include fetching cached model from token, which is the most common scenario.
+Cache user to improve performance is not a new idea. However, when I dig for tutorials for Laravel Auth, it is rare to find. One of the most helpful one is posted by Paulund (https://paulund.co.uk/laravel-cache-authuser), which confirmed us with the cache Auth::user() direction. Sadly, when trying to apply it to our project, it initially did not work. Later we discovered that this might be because it did not include fetching cached model from token, which is the most common scenario.
 
-This step to step tutorial is an extension based on Pauland's inspring one, using a freshly installed Laravel 5.7 project as example. Personally, I believe it can be applied to later version Laravel as well.
+This step to step tutorial is an extension based on Pauland's inspring one, using a freshly installed Laravel 5.7 project as example.
 
-We've used it in our production environment and it worked pretty good.
+We've used it in our production environment and it worked.
 
 ## Main Tutorial
 ### Step-1-Install-an-empty-Laravel-5-7
@@ -241,7 +241,7 @@ class CacheUserProvider extends EloquentUserProvider
 }
 
 ```
-In the above two functions, `retrieveById`is used when a guest tries to login via credentials like email and password. `retrieveByToken` is used when a logged user tries to perform a request. Both functions are overritten to ensure that the model is fetched from Cached-User instead of User.
+In the above two functions, `retrieveById` is used when a guest tries to login via credentials like email and password. `retrieveByToken` is used when a logged user tries to perform a request. Both functions are overwritten to ensure that the model is fetched from Cached-User instead of User.
 Register the new AuthService Provider by editing `app\Providers\AuthServiceProvider.php`
 ```
 <?php
@@ -406,7 +406,7 @@ That's it. We are still exploring cache user usage in passport API setting.
 
 一个常用的办法，是通过cache，对user model进行缓存，避免在每次打开页面的时候，都访问一次数据库的users表格，有效减少database query。
 
-在laravel讨论社区，对这个方法进行实践的教程非常少。一个比较有用的教程来自 [https://paulund.co.uk/laravel-cache-authuser](https://paulund.co.uk/laravel-cache-authuser) ，但实践发现这个教程遗漏了通过token获取缓存model的办法，导致如果单纯依靠它，并不能在用户日常使用中成功缓存user model。
+在laravel讨论社区，对这个方法进行实践的教程非常少。一个比较有用的教程来自 [https://paulund.co.uk/laravel-cache-authuser](https://paulund.co.uk/laravel-cache-authuser) ，但实践发现这个教程遗漏了通过token获取缓存model的办法，导致如果单纯依靠它，并不能在日常使用中成功缓存user model。
 
 实践中，我们在上述教程的基础上做了一些延伸，增加了通过token获取缓存model的办法。另外，增加了将这个办法拓展至passport配置API后端的部分。
 
