@@ -299,13 +299,12 @@ The final part of the tutorial is exactly the same as in laravel official docume
 ```
 $ composer require laravel/passport:^7.0
 ```
-Please note that current passport version (`8.*`) don't support laravel 5.7 anymore. Therefore please specify your passport version.
+Please note that current passport version (`8.*`) don't support laravel 5.7 (at least when I tried it did not work). Therefore please specify your passport version.
 ```
 $ php artisan migrate
 $ php artisan passport:install
 ```
-add the Laravel\Passport\HasApiTokens trait to your App\User model
-modify `app\User.php`
+add the Laravel\Passport\HasApiTokens trait to your App\User model by modify `app\User.php`
 ```
 <?php
 
@@ -407,7 +406,7 @@ That's it. We are still exploring cache user usage in passport API setting.
 
 一个常用的办法，是通过cache，对user model进行缓存，避免在每次打开页面的时候，都访问一次数据库的users表格，有效减少database query。
 
-在laravel讨论社区，对这个方法进行实践的教程非常少。一个比较有用的教程来自 https://paulund.co.uk/laravel-cache-authuser，但实践发现这个教程遗漏了通过token获取缓存model的办法，导致如果单纯依靠它，并不能在用户日常使用中成功缓存user model。
+在laravel讨论社区，对这个方法进行实践的教程非常少。一个比较有用的教程来自 [https://paulund.co.uk/laravel-cache-authuser](https://paulund.co.uk/laravel-cache-authuser) ，但实践发现这个教程遗漏了通过token获取缓存model的办法，导致如果单纯依靠它，并不能在用户日常使用中成功缓存user model。
 
 实践中，我们在上述教程的基础上做了一些延伸，增加了通过token获取缓存model的办法。另外，增加了将这个办法拓展至passport配置API后端的部分。
 
