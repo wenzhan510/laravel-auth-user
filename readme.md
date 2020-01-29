@@ -8,6 +8,7 @@
 
 实践验证，这能显著减少数据库负担，降低系统运维成本，改善用户访问体验。
 
+---
 
 ## 内容目录：
 1. 在空白laravel5.7程序里，配置auth、cache、database等基本内容
@@ -15,11 +16,12 @@
 3. 如何将它适配passport api
 
 ## 阅读前需求
-本教程默认用户已安装composer
-本教程默认用户已为本地环境配置mysql
-本教程默认用户已为本地环境配置redis，包括配置predis和安装redis-cli。
-本教程默认用户已有基础的laravel经验，知道如何本地serve程序，怎样在页面中打开自己的laravel工程。
+- 本教程默认用户已安装composer
+- 本教程默认用户已为本地环境配置mysql
+- 本教程默认用户已为本地环境配置redis，包括配置predis和安装redis-cli。
+- 本教程默认用户已有基础的laravel经验，知道如何本地serve程序，怎样在页面中打开自己的laravel工程。
 
+---
 
 ## 前言
 
@@ -36,6 +38,8 @@
 为了方便理解，本教程将带领读者在全新空白laravel工程上，一步步配置。
 
 内容或有疏漏，恳请指正。
+
+---
 
 ## 正文
 
@@ -72,11 +76,11 @@ $ php artisan migrate
 ```
 serve程序，打开页面尝试本地注册，顺利注册，可以登陆。
 
-登陆视图：（待插图）
+![laravel默认登陆界面.png](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/laravel%E9%BB%98%E8%AE%A4%E7%99%BB%E9%99%86%E7%95%8C%E9%9D%A2.png?raw=true)
 
 安装laravel-debuglar，观察访问中所进行的database query的数量。
 
-插入图片（待插入图片）
+![laravel debuglar显示，登陆后数据库query数为1](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/laravel%20debuglar%E6%98%BE%E7%A4%BA%EF%BC%8C%E7%99%BB%E9%99%86%E5%90%8E%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA1.png?raw=true)
 
 备注：laravel-debuglar是一个非常好用的工具，可以观察到目前使用了多少个界面、访问多少次数据库，指令具体是什么，耗费时间是多少，在优化时经常使用。这个包强烈建议只安装在dev环境，否则会有泄漏敏感数据的危险。
 ```
@@ -305,7 +309,7 @@ class AuthServiceProvider extends ServiceProvider
 ```
 serve页面，登录状态下，刷新后可以发现，query数量变成0，但不影响各种访问。
 
-插入图片（待插入图片）
+![缓存后，数据库query数为0.png](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/%E7%BC%93%E5%AD%98%E5%90%8E%EF%BC%8C%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA0.png?raw=true)
 
 ### 3. 如何将它适配passport api
 
@@ -313,7 +317,7 @@ serve页面，登录状态下，刷新后可以发现，query数量变成0，但
 ```
 $ composer require laravel/passport:^7.0
 ```
-这一步注意，现行passport版本5.8不支持5.7框架。
+这一步注意，现行passport版本不支持laravel5.7框架，安装时需指定版本号。
 ```
 $ php artisan migrate
 $ php artisan passport:install
@@ -380,7 +384,14 @@ public function boot()
 ],
 ```
 
+关于api passport中cache user的具体使用，我们还在摸索，暂时就说到这里。
+
+
+## 结果
+
+在实际使用中，和本教程的区别在于，我们使用redis作为session driver（这部分内容的配置参考官方教程即可）。在实际使用的前后端一体系统中（使用blade界面），增加cache user方法，能显著减轻对user表的负担，减少mysql数据库的负荷。目前我们的前后端分离系统仍在开发阶段，上述配置可行，但尚未来得及实践进入passport API阶段之后实际优化效果是什么。
+
 
 ## 参考文献
-laravel 官方教程（5.7版）：https://laravel.com/docs/5.7
-前人关于cache user的教程：https://paulund.co.uk/laravel-cache-authuser
+- laravel 官方教程（5.7版）：https://laravel.com/docs/5.7
+- 前人关于cache user的教程：https://paulund.co.uk/laravel-cache-authuser
