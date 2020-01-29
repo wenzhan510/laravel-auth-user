@@ -1,6 +1,386 @@
-# laravel性能提升之在auth方法中缓存users表（含passport API适配）
+# Laravel optimization tutorial: Cache User Model in Auth
 
-## 概要
+# [中文教程【laravel性能优化教程】在Auth中用Cache调度缓存的User模型](#中文教程【laravel性能优化教程】在Auth中用Cache调度缓存的User模型)
+
+## Abstract
+
+After our project deployed online, we noticed that every request queried the users table in the database. When the users table get larger and larger, this becomes a key step for the performance.
+
+This tutorial presents a way to cache the eloquent user model in redis, observe its update and return this model whenever the Auth Facade is used in an laravel application. Therefore, the total query number significantly reduced. This tutorial also included how to apply it to Passport setting.
+
+In our production environment, this method really helps.
+
+## Code Source
+[https://github.com/lyn510/laravel-auth-user](https://github.com/lyn510/laravel-auth-user)
+
+## Index
+- [Install an empty Laravel Project 5.7, add on auth, cache, database](#Step-1-Install-an-empty-Laravel-5-7).
+- [add Cache-User](#Step-2-Add-Cache-User)
+- [add Passport](#Step-3-Add-Passport)
+
+## Prerequisite
+- composer
+- mysql
+- redis
+- other basics of laravel
+
+## Introduction
+
+Cache user to improve performance is not a new idea. However, when I dig for tutorial for Laravel auth, it is rare to find one. One of the most helpful tutorial is by Pauland (https://paulund.co.uk/laravel-cache-authuser), which is very helpful but missed a key part: it did not include fetching cached model from token, which is the most common scenario.
+
+This step to step tutorial is an extension based on Pauland's inspring one, using a freshly installed Laravel 5.7 project as example. Personally, I believe it can be applied to later version Laravel as well.
+
+We've used it in our production environment and it worked pretty good.
+
+## Main Tutorial
+### Step-1-Install-an-empty-Laravel-5-7
+Install a fresh Laravel Project 5.7, add on auth, cache, database
+```
+$ composer create-project --prefer-dist laravel/laravel laravel-auth-user "5.7.*"
+```
+install auth
+```
+$ php artisan make:auth
+```
+connect to your local mysql
+locally create a mysql database and name it `laravel-auth-user`. Edit `.env` to allow laravel connect to it
+```
+...
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel-cache-auth
+DB_USERNAME=root
+DB_PASSWORD=
+...
+```
+migrate your database
+```
+$ php artisan migrate
+```
+Serve your program. Visit your current project and you shall be able to create a new user by register, and login.
+
+![laravel-default-login-page](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/laravel%E9%BB%98%E8%AE%A4%E7%99%BB%E9%99%86%E7%95%8C%E9%9D%A2.png?raw=true)
+
+Install laravel-debuglar to observe database query counts during current visit.
+ *laravel-debuglar is a powerful tool to optimize your website performance. Please remember to install it only in dev environment.*
+
+```
+$ composer require barryvdh/laravel-debugbar --dev
+```
+After install, you will see a red debug bar at the bottom of your page. When a user is logged in, the database query number will appear to be 1. And you can see how much time it used to carry out the query. Is usually pretty fast on a freshly installed laravel project, yet it may grow incredibly slower once the users table get large.
+
+![laravel-debuglar-shows-query-number-1-when-logged-in](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/laravel%20debuglar%E6%98%BE%E7%A4%BA%EF%BC%8C%E7%99%BB%E9%99%86%E5%90%8E%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA1.png?raw=true)
+
+install predis
+
+```
+$ composer require predis/predis
+```
+modify `.env` for setting up redis
+```
+...
+CACHE_DRIVER=redis
+CACHE_PREFIX=laravel-cache-user
+...
+```
+check redis connectivity with tinker
+```
+$ php artisan tinker
+```
+store any random data to test redis
+```
+>>> Cache::put('data','success',1)
+```
+and see what you get back
+```
+>>> Cache::get('data')
+```
+it will show like this
+```
+>>> Cache::put('data','success',1)
+=> null
+>>> Cache::get('data')
+=> "success"
+>>>
+```
+which means your redis is succesfully connected
+
+### Step-2-Add-Cache-User
+after the previous settings, now we will cache the user model, and get the model instance when necessary.
+
+create a file`app\Helpers\CacheUser.php`
+
+```
+<?php
+
+namespace App\Helpers;
+
+use Cache;
+use App\User;
+use Auth;
+
+class CacheUser{ //cache-user class
+    public static function user($id){
+        if(!$id||$id<=0||!is_numeric($id)){return;} // if $id is not a reasonable integer, return false instead of checking users table
+
+        return Cache::remember('cachedUser.'.$id, 30, function() use($id) {
+            return User::find($id); // cache user instance for 30 minutes
+        });
+    }
+}
+
+```
+Edit `config\app.php`
+```
+'aliases' => [
+...
+'CacheUser' => App\Helpers\CacheUser::class,
+...
+```
+Then, we need to ensure that the cached User Model instance got updated once the table has changed. We use an observer to watch the User Model to do that. Create a file `app\Observers\UserObserver.php`。
+```
+<?php
+namespace App\Observers;
+
+use Cache;
+use App\User;
+
+/**
+ * User observer
+ */
+class UserObserver
+{
+    public function updated(User $user) // whenever there's update of user, renew cached instance
+    {
+        Cache::put("cachedUser.{$user->id}", $user, 30);
+    }
+}
+
+```
+Register the Observer so that it is called when needed.
+Edit`app\Providers\AppServiceProvider.php`
+```
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
+use App\Observers\UserObserver;
+use App\User;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        User::observe(UserObserver::class);
+    }
+}
+
+```
+Last, check **Cached User** instead of User when Auth is checking a request . Create file `app\Auth\CacheUserProvider.php`
+
+```
+<?php
+namespace App\Auth;
+use App\User;
+use Illuminate\Auth\EloquentUserProvider;
+use Illuminate\Contracts\Hashing\Hasher as HasherContract;
+use Illuminate\Support\Facades\Cache;
+use CacheUser;
+/**
+ * Class CacheUserProvider
+ * @package App\Auth
+ */
+class CacheUserProvider extends EloquentUserProvider
+{
+    /**
+     * CacheUserProvider constructor.
+     * @param HasherContract $hasher
+     */
+    public function __construct(HasherContract $hasher)
+    {
+        parent::__construct($hasher, User::class);
+    }
+    /**
+     * @param mixed $identifier
+     * @return \Illuminate\Contracts\Auth\Authenticatable|null
+     */
+    public function retrieveById($identifier)
+    {
+        return CacheUser::user($identifier);
+    }
+
+    public function retrieveByToken($identifier, $token)
+    {
+        $model = CacheUser::user($identifier);
+
+        if (! $model) {
+            return null;
+        }
+
+        $rememberToken = $model->getRememberToken();
+
+        return $rememberToken && hash_equals($rememberToken, $token) ? $model : null;
+    }
+}
+
+```
+In the above two functions, `retrieveById`is used when a guest tries to login via credentials like email and password. `retrieveByToken` is used when a logged user tries to perform a request. Both functions are overritten to ensure that the model is fetched from Cached-User instead of User.
+Register the new AuthService Provider by editing `app\Providers\AuthServiceProvider.php`
+```
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use App\Auth\CacheUserProvider;
+use Illuminate\Support\Facades\Auth;
+
+class AuthServiceProvider extends ServiceProvider
+{
+    /**
+     * The policy mappings for the application.
+     *
+     * @var array
+     */
+    protected $policies = [
+        'App\Model' => 'App\Policies\ModelPolicy',
+    ];
+
+    /**
+     * Register any authentication / authorization services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        $this->registerPolicies();
+
+        Auth::provider('cache-user', function() {
+            return resolve(CacheUserProvider::class);
+        });
+    }
+}
+
+```
+Then edit `config\auth.php`
+```
+...
+'providers' => [
+        'users' => [
+            'driver' => 'cache-user', // modify to use cached user instance
+            'model' => App\User::class,
+        ],
+...
+```
+Serve your project. You will see that when a user is logged in, the query number changed to 0 after the first time. But it won't affect user visit.
+
+![laravel-debuglar-show-query-number-reduce-to-0](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/%E7%BC%93%E5%AD%98%E5%90%8E%EF%BC%8C%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA0.png?raw=true)
+
+### Step-3-Add-Passport
+The final part of the tutorial is exactly the same as in laravel official document, except one minor thing.
+```
+$ composer require laravel/passport:^7.0
+```
+Please note that current passport version (`8.*`) don't support laravel 5.7 anymore. Therefore please specify your passport version.
+```
+$ php artisan migrate
+$ php artisan passport:install
+```
+add the Laravel\Passport\HasApiTokens trait to your App\User model
+modify `app\User.php`
+```
+<?php
+
+namespace App;
+
+use Laravel\Passport\HasApiTokens;
+...
+
+class User extends Authenticatable
+{
+    use HasApiTokens, Notifiable;
+...
+```
+register api routes
+edit `app\Providers\AuthServiceProvider.php`
+```
+<?php
+
+namespace App\Providers;
+
+use Laravel\Passport\Passport;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use App\Auth\CacheUserProvider;
+use Illuminate\Support\Facades\Auth;
+...
+
+class AuthServiceProvider extends ServiceProvider
+{
+
+...
+public function boot()
+    {
+        $this->registerPolicies();
+
+        Auth::provider('cache-user', function() {
+            return resolve(CacheUserProvider::class);
+        });
+
+        Passport::routes();
+    }
+
+```
+
+change default auth method
+edit file `config\auth.php`
+```
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
+    ],
+
+    'api' => [
+        'driver' => 'passport',
+        'provider' => 'users',
+    ],
+],
+```
+That's it. We are still exploring cache user usage in passport API setting.
+
+## Reference
+- laravel official document (v
+5.7): [https://laravel.com/docs/5.7](https://laravel.com/docs/5.7)
+- Pauland's tutorial on cache user: [https://paulund.co.uk/laravel-cache-authuser](https://paulund.co.uk/laravel-cache-authuser
+
+
+
+
+# 中文教程【laravel性能优化教程】在Auth中用Cache调度缓存的User模型
+
+## 源代码地址
+[https://github.com/lyn510/laravel-auth-user](https://github.com/lyn510/laravel-auth-user)
+
+## 摘要
 
 在laravel系统上线运行后我们发现，用户的每一次访问，都需要向数据库请求，验证其身份。对于用户较多的线上程序，频繁访问users表，成为系统的一个性能门槛。
 
@@ -77,14 +457,13 @@ serve程序，打开页面尝试本地注册，顺利注册，可以登陆。
 
 安装laravel-debuglar，观察访问中所进行的database query的数量。
 
-![laravel debuglar显示，登陆后数据库query数为1](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/laravel%20debuglar%E6%98%BE%E7%A4%BA%EF%BC%8C%E7%99%BB%E9%99%86%E5%90%8E%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA1.png?raw=true)
-
 备注：laravel-debuglar是一个非常好用的工具，可以观察到目前使用了多少个界面、访问多少次数据库，指令具体是什么，耗费时间是多少，在优化时经常使用。这个包强烈建议只安装在dev环境，否则会有泄漏敏感数据的危险。
 ```
 $ composer require barryvdh/laravel-debugbar --dev
 ```
 安装后，我们会发现，页面下方出现红色的debug条目，点开可以查看当前页面query数量。在登录状态下，用户访问任何界面，都会显示database query数量为1，访问了users表。目前这个访问是比较快的。但当users表增大时，这个数字会显著增加。
 
+![laravel debuglar显示，登陆后数据库query数为1](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/laravel%20debuglar%E6%98%BE%E7%A4%BA%EF%BC%8C%E7%99%BB%E9%99%86%E5%90%8E%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA1.png?raw=true)
 
 安装predis
 ```
