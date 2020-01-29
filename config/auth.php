@@ -66,7 +66,7 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'eloquent',
+            'driver' => 'cache-user', // modify to use cached user instance
             'model' => App\User::class,
         ],
 
