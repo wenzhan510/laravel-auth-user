@@ -8,12 +8,11 @@
 
 实践验证，这能显著减少数据库负担，降低系统运维成本，改善用户访问体验。
 
----
 
 ## 内容目录：
-1. 在空白laravel5.7程序里，配置auth、cache、database等基本内容
-2. 在上述工程基础上，增加Cache-User的具体办法
-3. 如何将它适配passport api
+- [在空白laravel5.7程序里，配置auth、cache、database等基本内容](#在空白laravel5.7程序里，配置auth、cache、database等基本内容)
+- [在上述工程基础上，增加Cache-User的具体办法](#在上述工程基础上，增加Cache-User的具体办法)
+- [如何将它适配Passport](#如何将它适配Passport)
 
 ## 阅读前需求
 - 本教程默认用户已安装composer
@@ -21,7 +20,6 @@
 - 本教程默认用户已为本地环境配置redis，包括配置predis和安装redis-cli。
 - 本教程默认用户已有基础的laravel经验，知道如何本地serve程序，怎样在页面中打开自己的laravel工程。
 
----
 
 ## 前言
 
@@ -39,11 +37,10 @@
 
 内容或有疏漏，恳请指正。
 
----
 
 ## 正文
 
-### 1. 在空白laravel5.7程序里，配置auth、cache、database等基本内容
+### 在空白laravel5.7程序里，配置auth、cache、database等基本内容
 
 首先安装空白laravel 5.7教程
 
@@ -122,7 +119,7 @@ $ php artisan tinker
 ```
 这说明cache配置成功。
 
-### 2. 在上述工程基础上，增加Cache-User的具体办法
+### 在上述工程基础上，增加Cache-User的具体办法
 在上面的内容中，将user model进行cache。
 首先，我们要将User Model缓存起来放到cache里，在需要的时候去调度它。
 创建文件：`app\Helpers\CacheUser.php`
@@ -311,7 +308,7 @@ serve页面，登录状态下，刷新后可以发现，query数量变成0，但
 
 ![缓存后，数据库query数为0.png](https://github.com/lyn510/laravel-auth-user/blob/master/readme_pictures/%E7%BC%93%E5%AD%98%E5%90%8E%EF%BC%8C%E6%95%B0%E6%8D%AE%E5%BA%93query%E6%95%B0%E4%B8%BA0.png?raw=true)
 
-### 3. 如何将它适配passport api
+### 如何将它适配Passport
 
 最后讲一下如何适配passport，实际上就是普通passport适配的基本教程，参见laravel官方文档。
 ```
@@ -392,6 +389,6 @@ public function boot()
 在实际使用中，和本教程的区别在于，我们使用redis作为session driver（这部分内容的配置参考官方教程即可）。在实际使用的前后端一体系统中（使用blade界面），增加cache user方法，能显著减轻对user表的负担，减少mysql数据库的负荷。目前我们的前后端分离系统仍在开发阶段，上述配置可行，但尚未来得及实践进入passport API阶段之后实际优化效果是什么。
 
 
-## 参考文献
+## 参考
 - laravel 官方教程（5.7版）：https://laravel.com/docs/5.7
 - 前人关于cache user的教程：https://paulund.co.uk/laravel-cache-authuser
