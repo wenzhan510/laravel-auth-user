@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Laravel\Passport\Passport;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use App\Auth\CacheUserProvider;
@@ -30,5 +31,7 @@ class AuthServiceProvider extends ServiceProvider
         Auth::provider('cache-user', function() {
             return resolve(CacheUserProvider::class);
         });
+
+        Passport::routes();
     }
 }
