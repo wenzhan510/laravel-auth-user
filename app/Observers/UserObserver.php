@@ -9,8 +9,8 @@ use App\User;
  */
 class UserObserver
 {
-    public function updated(User $user) // whenever there's update of user, renew cached instance
+    public function saved(User $user) // whenever there's update or create of user, renew cached instance
     {
-        Cache::put("cachedUser.{$user->id}", $user, 30);
+        Cache::forget("cachedUser.{$user->id}");
     }
 }
